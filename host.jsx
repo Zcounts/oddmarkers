@@ -108,38 +108,89 @@ function runCore(markSelected, settings){
 
   app.beginUndoGroup("Odd Markers");
 
-  if(markSelected){
-    // Selected clips only
-    var items = seq.getSelection ? seq.getSelection() : [];
-    if(!items || !items.length){ app.endUndoGroup(); return "No timeline clip selection"; }
-    for(var i=0;i<items.length;i++){
-      var it = items[i];
-      try{
+  if (markSelected) {
+    app.enableQE();
+    var qeSeq = qe && qe.project ? qe.project.getActiveSequence() : null;
+    if (!qeSeq) { app.endUndoGroup(); return "No active sequence"; }
+
+    // Collect selected timeline items (video + audio)
+    var selectedItems = [];
+
+    function collect(track, isVideo) {
+      var n = track.getItemsInTrack();
+      for (var i = 0; i < n; i++) {
+        var it = track.getItemAt(i);
+        if (it && it.isSelected()) {
+          // Map QE item -> public DOM item by time/track indices
+          try {
+            var start = it.start.ticks;
+            var end   = it.end.ticks;
+            var tIdx  = it.trackIndex; // 0-based
+            var trackColl = isVideo ? getActiveSequence().videoTracks : getActiveSequence().audioTracks;
+            var tr = trackColl[tIdx];
+            // Find a clip with matching start/end ticks
+            for (var c = 0; c < tr.clips.numItems; c++) {
+              var clip = tr.clips[c];
+              if (clip.start.ticks === start && clip.end.ticks === end) {
+                selectedItems.push({ dom: clip, isVideo: isVideo, trackIndex: tIdx });
+                break;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    // Walk QE tracks
+    var vCount = qeSeq.numVideoTracks;
+    for (var v = 0; v < vCount; v++) collect(qeSeq.getVideoTrackAt(v), true);
+
+    var aCount = qeSeq.numAudioTracks;
+    for (var a = 0; a < aCount; a++) collect(qeSeq.getAudioTrackAt(a), false);
+
+    if (!selectedItems.length) { app.endUndoGroup(); return "No timeline clip selection"; }
+
+    // Create markers for selected items
+    for (var i = 0; i < selectedItems.length; i++) {
+      var node = selectedItems[i];
+      try {
+        var it = node.dom;
         var start = it.start.ticks, end = it.end.ticks;
-        if(settings.exTransitions){
-          try{ if(it.inTransition && it.inTransition.duration) start += it.inTransition.duration.ticks; }catch(e){}
-          try{ if(it.outTransition && it.outTransition.duration) end -= it.outTransition.duration.ticks; }catch(e){}
+
+        if (settings.exTransitions) {
+          try { if (it.inTransition && it.inTransition.duration)  start += it.inTransition.duration.ticks; } catch (e) {}
+          try { if (it.outTransition && it.outTransition.duration) end   -= it.outTransition.duration.ticks; } catch (e) {}
         }
-        if(settings.respectIO && seq.getInPointAsTime() && seq.getOutPointAsTime()){
-          var tin = seq.getInPointAsTime().ticks; var tout = seq.getOutPointAsTime().ticks;
-          if(end <= tin || start >= tout) continue;
-          if(start < tin) start = tin; if(end > tout) end = tout;
+        if (settings.respectIO && getActiveSequence().getInPointAsTime() && getActiveSequence().getOutPointAsTime()) {
+          var tin  = getActiveSequence().getInPointAsTime().ticks;
+          var tout = getActiveSequence().getOutPointAsTime().ticks;
+          if (end <= tin || start >= tout) continue;
+          if (start < tin) start = tin; if (end > tout) end = tout;
         }
-        var trackLabel = (it.mediaType === 'Video' ? 'V' : 'A') + (it.trackIndex+1);
-        var nm = it.name && it.name.length ? it.name : ("Clip @ " + trackLabel + ":?" );
-        if(settings.namePat && settings.namePat !== "{name}") nm = settings.namePat.replace("{name}", nm).replace("{track}", trackLabel).replace("{index}", String(i+1));
-        if(settings.prefixTrack) nm = trackLabel + " – " + nm;
+
+        var trackLabel = (node.isVideo ? 'V' : 'A') + (node.trackIndex + 1);
+        var nm = it.name && it.name.length ? it.name : ("Clip @" + trackLabel);
+
+        if (settings.namePat && settings.namePat !== "{name}") {
+          nm = settings.namePat
+            .replace("{name}", nm)
+            .replace("{track}", trackLabel)
+            .replace("{index}", String(i + 1));
+        }
+        if (settings.prefixTrack) nm = trackLabel + " – " + nm;
+
         var colIdx = colorIndex(settings.color);
-        if(!settings.allowDup && seqHasDuplicateMarker(seq, start, end, nm)){ skipped++; continue; }
-        createSeqMarker(seq, start, end, nm, colIdx, settings.comment);
+        if (!settings.allowDup && seqHasDuplicateMarker(getActiveSequence(), start, end, nm)) { skipped++; continue; }
+
+        createSeqMarker(getActiveSequence(), start, end, nm, colIdx, settings.comment);
         created++;
-      }catch(e){ /* ignore item */ }
+      } catch (e) {}
     }
   } else {
-    // All clips across tracks
-    eachClip(seq, settings, function(m){
-      if(m.end <= m.start) return;
-      if(!settings.allowDup && seqHasDuplicateMarker(seq, m.start, m.end, m.name)){ skipped++; return; }
+    // All clips across tracks (as before)
+    eachClip(seq, settings, function (m) {
+      if (m.end <= m.start) return;
+      if (!settings.allowDup && seqHasDuplicateMarker(seq, m.start, m.end, m.name)) { skipped++; return; }
       createSeqMarker(seq, m.start, m.end, m.name, m.colorIdx, settings.comment);
       created++;
     });
