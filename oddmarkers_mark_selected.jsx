@@ -1,5 +1,5 @@
 /* Headless runner: Mark Selected (assign a keyboard shortcut in Premiere) */
-#include "../host.jsx"
+#include "host.jsx"
 (function(){
   var s = JSON.parse(OM_readSettings());
   var msg = runCore(true, s);
