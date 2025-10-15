@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Odd Markers</title>
+  <style>
+    body{font:13px/1.4 system-ui,Segoe UI,Arial;margin:12px;color:#eaeaea;background:#1f1f1f}
+    fieldset{border:1px solid #3a3a3a;border-radius:8px;margin:10px 0;padding:10px}
+    legend{padding:0 6px;color:#bbb}
+    label{display:block;margin:6px 0}
+    button{padding:8px 10px;margin:6px 6px 0 0;border:0;border-radius:8px;background:#4b79ff;color:#fff;cursor:pointer}
+    button:disabled{opacity:.5}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    select,input[type="text"]{background:#2a2a2a;color:#ddd;border:1px solid #3a3a3a;border-radius:6px;padding:6px}
+    small#status{display:block;margin-top:10px;color:#9ad27d}
+  </style>
+  <script src="./ui.js"></script>
+</head>
+<body>
+  <div class="row">
+    <button id="btnAll">Mark All</button>
+    <button id="btnSel">Mark Selected</button>
+  </div>
+
+  <fieldset>
+    <legend>Tracks</legend>
+    <label><input id="incV" type="checkbox" checked> Video tracks</label>
+    <label><input id="incA" type="checkbox"> Audio tracks</label>
+    <label><input id="selOnly" type="checkbox"> Selected tracks only (respect targeting)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Clip types</legend>
+    <label><input id="skipAdj" type="checkbox" checked> Skip adjustment layers</label>
+    <label><input id="skipNest" type="checkbox"> Skip nests</label>
+    <label><input id="skipDisabled" type="checkbox" checked> Skip disabled or muted tracks</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Timing</legend>
+    <label><input id="exTransitions" type="checkbox"> Exclude transitions (offset by durations)</label>
+    <label><input id="respectIO" type="checkbox"> Trim to sequence in/out (only mark inside)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Marker meta</legend>
+    <label>Name pattern: <input id="namePat" type="text" value="{name}"></label>
+    <label><input id="prefixTrack" type="checkbox"> Prefix with track label (e.g., "V2 – {name}")</label>
+    <label>Color:
+      <select id="color">
+        <option value="default">Default</option>
+        <option value="red">Red</option>
+        <option value="yellow">Yellow</option>
+        <option value="green">Green</option>
+        <option value="cyan">Cyan</option>
+        <option value="blue">Blue</option>
+        <option value="magenta">Magenta</option>
+        <option value="white">White</option>
+        <option value="black">Black</option>
+        <option value="cycle">Track-based cycling</option>
+      </select>
+    </label>
+    <label>Comments (adds timestamp): <input id="comment" type="text" value="Auto by Odd Markers"></label>
+    <label><input id="allowDup" type="checkbox"> Allow duplicates</label>
+  </fieldset>
+
+  <small id="status">Ready.</small>
+</body>
+</html>
